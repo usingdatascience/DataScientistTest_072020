@@ -40,7 +40,7 @@ To access the data and share your answers with us:
 Once you have downloaded the data/repository:
 
   - Load the `simulated_data.csv` file to your analysis environment of
-    choice. We encourage the use of `R` and `R markdown` in particular,
+    choice. We encourage the use of `R` and `Rmarkdown` in particular,
     but are happy to assess most common analysis environments provided
     we can access them.
 

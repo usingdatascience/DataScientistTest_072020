@@ -20,7 +20,7 @@ paradigms, or sets of assumptions. Please consider the following:
     ‘best’ model
   - Interpretation of the model outputs
 
-We advise you to spend no more than two hours on this test, as it is
+We advise you to **spend no more than two hours on this test**, as it is
 only part of the selection process. The first stage of interview will be
 to discuss you analysis approach, regardless of whether it ‘worked,’ so
 we ask you to leave any partial code/documents you create, even if they

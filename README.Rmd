@@ -27,7 +27,7 @@ Please consider the following:
 + A method of assessing how 'good' a model is, and how you select the 'best' model
 + Interpretation of the model outputs
 
-We advise you to spend no more than two hours on this test, as it is only part of the selection process.  The first stage of interview will be to discuss you analysis approach, regardless of whether it 'worked,' so we ask you to leave any partial code/documents you create, even if they are incomplete.  This will allows us to see your thought process, as there are many ways to approach this exercise.
+We advise you to __spend no more than two hours on this test__, as it is only part of the selection process.  The first stage of interview will be to discuss you analysis approach, regardless of whether it 'worked,' so we ask you to leave any partial code/documents you create, even if they are incomplete.  This will allows us to see your thought process, as there are many ways to approach this exercise.
 
 ## Instructions 
 

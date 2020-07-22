@@ -3,13 +3,24 @@ Data Scientist test
 
 ## Overview
 
-This repository contains data and instructions for a test as part of you
-application
+This repository contains data and instructions for a test as part of
+your application. It contains a simulated dataset, with 300 patients
+from different organisations, with columns:
+
+  - ID - a unique row ID.
+  - Organisation - The organisation the patient was seen at.
+  - Age - The patient’s age.
+  - LOS - The patent’s length-of-stay in hospital, in whole days.
+  - Death - A flag indicating whether the patient died, coded: 0 =
+    survived, 1 = died.
+  - Category - The risk category the patient falls into.
 
 ## The task
 
-The task in this assessment is: ***build the best model you can,
-predicting the ‘Death’ column, in this dataset.***
+The task in this assessment is:
+
+***build the best model you can, predicting the ‘Death’ column, in this
+dataset.***
 
 We will not restrict you to particular model classes, statistical
 paradigms, or sets of assumptions. Please consider the following:
@@ -29,16 +40,20 @@ there are many ways to approach this exercise.
 
 ## Instructions
 
-To access the data and share your answers with us:
+**To access the data and share your answers with us:**
 
   - Download a copy of the data in this repository:
   - If you are familiar with GitHub, please clone the repository and
     push your work to your own repository.
   - If you are completely new to GitHub, you can download the data using
-    the green ‘Clone or download’ button and send your answers by email
-    to <HED@uhb.nhs.uk>.
+    the green ‘Code’ or ‘Clone or download’ buttons towards the top of
+    this page, click on button and select ‘Download ZIP’, then send your
+    answers by email to <HED@uhb.nhs.uk>.
 
-Once you have downloaded the data/repository:
+Git is a tool used within the HED Data Science work-flow, and small
+weighting will be added in-favour of using GitHub properly.
+
+**Once you have downloaded the data/repository:**
 
   - Load the `simulated_data.csv` file to your analysis environment of
     choice. We encourage the use of `R` and `Rmarkdown` in particular,

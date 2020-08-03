@@ -256,7 +256,6 @@ classifier = glm(formula = Death ~ .,
                  family = binomial(link = 'logit'),
                  data = up_train)
 summary(classifier)
-anova(classifier, test="Chisq")
 ```
 
 ### Model Output notes
@@ -278,7 +277,7 @@ So we have a comparison, this initial trained model is now used to predict on th
 
 ### Model 1 Confusion Matrix
 
-Following shows the Confusion Matrix for the initial model, together with the accuracy, precision and specificty metrics
+Following shows the Confusion Matrix for the initial model, together with the accuracy, precision, recall and specificity metrics. When producing these, the threshold to determine if the predicition is survival or not, is 0.5.  A value greater than this, indicates survival.
 
 ```{r model1_auc, echo=FALSE}
 predictTest = predict(classifier, type = "response", newdata = test_set)
@@ -333,20 +332,13 @@ classifier2 = glm(formula = Death ~ Age + LOS,
                  family = binomial(link = 'logit'),
                  data = up_train)
 summary(classifier2)
-#now compare the 2 models
-anova(classifier,classifier2, test = 'Chisq')
-# confirms the second model is the best
 ```
 
 ### Explanation of Model 2 Output
 
-- Comparing both models using the ANOVA test. 
+- Both Age and LOS are still significant in model 2. (P values < 0.05)
 
-- null hypothesis = second model is better than first. 
-
-- p < 0.05 results in rejecting our hypothesis, if p > 0.05, we'll fail to reject the null hypothesis.
-
-- P Value from Anova Test = 0.4067, so we fail to reject null hypothesis, which confirms the 2nd model is better than the first.
+- Both variables have positive coefficients, indicating that they both will contribute to a increase in chances of survival of the patient.
 
 ### Model 2 Confusion Matrix
 

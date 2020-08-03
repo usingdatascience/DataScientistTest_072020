@@ -157,7 +157,8 @@ show_plot(z)
 
 No variables have missing values.
 
-Two Categorical Variables :-
+Two Categorical Variables
+
 - Category has 3 possible values (Low, Moderate and High). Low is the dominant value. 
 - Organisation has ten possible values with equal amounts in each value.
 
@@ -175,12 +176,22 @@ print("Death Column - Split between 0 (survived), 1 (Not Survived)")
 table(sim$Death)
 ```
 
+Response Variable (Death) - ie. variable we are trying to predict
+247 records have value 0 (survived), 53 have value 1 (not survived)
+
 ### Summary of Distributions
 - Organisation :- Equally distributed between the ten trusts.
 - Age :- Shows more records for younger (< 25) and older (> 60) people
 - LOS :- Most length of stays are less than 5 days, longer stays gradually reduce in numbers
 - Death :- more records in dataset with value = 0, ie. Survived. This will result in an imbalanced dataset. When modelling this may result in poor performance on minority class. Will use Caret library, to upsample.
 - Category :- Risk Category 2 is the most prevalent in this dataset
+
+## Data Preparation
+- Converting Death variable to a factor (0 or 1)
+- Converting Organisation and Category variables to numeric
+- Using the CARET library, split dataset into training and test sets (70/30 split)
+- Using CARET library again, addressing the imbalance issue of the response variable (Death). Using upsampling for the minority class, to achieve balanced dataset.
+- Feature Scaling, to normalise the range of the independant variables, ahead of modelling.
 
 ```{r setup_data1, message=FALSE, warning=FALSE, echo = FALSE, results='hide'}
 # convert Death to a factor 
@@ -204,8 +215,8 @@ table(training_set$Death)
 
 # CLASS IMBALANCE - addressing the issue
 # there is approximately 4 times more non-death rows, than death (ie=1)
-# use the downsampling utility from caret to "downsample"
-# Down Sample
+# use the upsampling utility from caret to "upsample"
+# Up Sample
 set.seed(100)
 up_train <- upSample(x = training_set[, colnames(training_set) %ni% "Death"],
                          y = training_set$Death, yname="Death")

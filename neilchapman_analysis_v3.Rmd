@@ -340,8 +340,6 @@ anova(classifier,classifier2, test = 'Chisq')
 
 ### Explanation of Model 2 Output
 
-- Achieved a lower AIC score in second model compared to first
-
 - Comparing both models using the ANOVA test. 
 
 - null hypothesis = second model is better than first. 

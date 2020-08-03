@@ -588,23 +588,6 @@ summary {
 ## AIC: 453.77
 ## 
 ## Number of Fisher Scoring iterations: 4</code></pre>
-<pre><code>## Analysis of Deviance Table
-## 
-## Model: binomial, link: logit
-## 
-## Response: Death
-## 
-## Terms added sequentially (first to last)
-## 
-## 
-##              Df Deviance Resid. Df Resid. Dev   Pr(&gt;Chi)    
-## NULL                           345     479.66               
-## Organisation  1   0.4305       344     479.23     0.5117    
-## Age           1  17.2264       343     462.00 0.00003318 ***
-## LOS           1  16.6128       342     445.39 0.00004584 ***
-## Category      1   1.6217       341     443.77     0.2028    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
 <div id="model-output-notes" class="section level3">
 <h3>Model Output notes</h3>
 <ul>
@@ -622,7 +605,7 @@ summary {
 </div>
 <div id="model-1-confusion-matrix" class="section level3">
 <h3>Model 1 Confusion Matrix</h3>
-<p>Following shows the Confusion Matrix for the initial model, together with the accuracy, precision and specificty metrics</p>
+<p>Following shows the Confusion Matrix for the initial model, together with the accuracy, precision, recall and specificity metrics. When producing these, the threshold to determine if the predicition is survival or not, is 0.5. A value greater than this, indicates survival.</p>
 <pre><code>## [1] &quot;Confusion Matrix&quot;</code></pre>
 <pre><code>##    
 ##     FALSE TRUE
@@ -683,21 +666,12 @@ print(paste0(&quot;AUC Score for Model 2 = &quot;, auc_1))</code></pre>
 ## AIC: 451.57
 ## 
 ## Number of Fisher Scoring iterations: 4</code></pre>
-<pre><code>## Analysis of Deviance Table
-## 
-## Model 1: Death ~ Organisation + Age + LOS + Category
-## Model 2: Death ~ Age + LOS
-##   Resid. Df Resid. Dev Df Deviance Pr(&gt;Chi)
-## 1       341     443.77                     
-## 2       343     445.57 -2  -1.7995   0.4067</code></pre>
 </div>
 <div id="explanation-of-model-2-output" class="section level3">
 <h3>Explanation of Model 2 Output</h3>
 <ul>
-<li><p>Comparing both models using the ANOVA test.</p></li>
-<li><p>null hypothesis = second model is better than first.</p></li>
-<li><p>p &lt; 0.05 results in rejecting our hypothesis, if p &gt; 0.05, we’ll fail to reject the null hypothesis.</p></li>
-<li><p>P Value from Anova Test = 0.4067, so we fail to reject null hypothesis, which confirms the 2nd model is better than the first.</p></li>
+<li><p>Both Age and LOS are still significant in model 2. (P values &lt; 0.05)</p></li>
+<li><p>Both variables have positive coefficients, indicating that they both will contribute to a increase in chances of survival of the patient.</p></li>
 </ul>
 </div>
 <div id="model-2-confusion-matrix" class="section level3">

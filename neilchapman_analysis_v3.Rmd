@@ -30,7 +30,7 @@ library(corrplot)
 ```
 
 ```{r load_data, message=FALSE, warning=FALSE, echo = FALSE, results='hide'}
-setwd("~/Documents/NHS_Birmingham/DataScientistTest_072020-master")
+# setwd("~/Documents/NHS_Birmingham/DataScientistTest_072020-master")
 # read in the data
 sim <- read.csv('simulated_data.csv')
 

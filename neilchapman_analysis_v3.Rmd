@@ -1,0 +1,376 @@
+---
+title: "Analysis of Data / Modelling via Logistic Regression"
+author: "by Neil Chapman"
+date: "01/08/2020"
+output:
+  html_document:
+    toc: yes
+  pdf_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libs, message=FALSE, warning=FALSE, echo = FALSE, results='hide'}
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(SmartEDA)
+library(inspectdf)
+library(tidyverse)
+library(funModeling)
+library(Hmisc)
+library(tidyverse)
+library(tidyquant)
+library(Metrics)
+library(corrplot)
+```
+
+```{r load_data, message=FALSE, warning=FALSE, echo = FALSE, results='hide'}
+setwd("~/Documents/NHS_Birmingham/DataScientistTest_072020-master")
+# read in the data
+sim <- read.csv('simulated_data.csv')
+
+# added RNGKind in for reproducibility with set.seed. Was not giving same results in 
+# the markdown script, as I was getting in the normal R script that i wrote initially
+# see https://community.rstudio.com/t/getting-different-results-with-set-seed/31624/4
+RNGkind(sample.kind = 'Rounding')
+set.seed(100)
+```
+
+```{r func_defs, echo=FALSE}
+basic_eda <- function(data)
+{
+    glimpse(data)
+    print(status(data))
+    freq(data) 
+    print(profiling_num(data))
+    plot_num(data)
+    describe(data)
+}
+
+basic_eda_v2 <- function(data)
+{
+    print(paste0("Number of rows in dataset = ",nrow(data)))
+    print("=====================================")
+
+    print(paste0("Number of Columns in dataset = ",ncol(data)))
+    print("=====================================")
+
+    print("Dimensions of Data")
+    print("==================")
+    print(dim(data))
+
+    print("Summary of source file using GLIMPSE utility")
+    print("============================================")
+    glimpse(data)
+    
+    print("Summary of Data file")
+    print("====================")
+    print(summary(data))
+    
+    print("Categorical Variables")
+    print("=====================")
+    print("Organisation Variable")
+    print(count(data, vars = Organisation))
+    print("---------------------")
+    print("LOS Variable")
+    print(count(data, vars = LOS))
+}
+
+plot_hist_facet <- function(data, bins = 10, ncol = 5,
+                            fct_reorder = FALSE, fct_rev = FALSE, 
+                            fill = palette_light()[[3]], 
+                            color = "white", scale = "free") {
+    
+    data_factored <- data %>%
+        mutate_if(is.character, as.factor) %>%
+        mutate_if(is.factor, as.numeric) %>%
+        gather(key = key, value = value, factor_key = TRUE) 
+    
+    if (fct_reorder) {
+        data_factored <- data_factored %>%
+            mutate(key = as.character(key) %>% as.factor())
+    }
+    
+    if (fct_rev) {
+        data_factored <- data_factored %>%
+            mutate(key = fct_rev(key))
+    }
+    
+    g <- data_factored %>%
+        ggplot(aes(x = value, group = key)) +
+        geom_histogram(bins = bins, fill = fill, color = color) +
+        facet_wrap(~ key, ncol = ncol, scale = scale) + 
+        theme_tq()
+    
+    return(g)
+    
+}
+```
+
+## Exploratory Data Analysis (EDA)
+
+Columns within Dataset 
+
+- ID :- a unique row ID.
+- Organisation :- The organisation the patient was seen at.
+- Age :- The patient’s age.
+- LOS :- The patent’s length-of-stay in hospital, in whole days.
+- Death :- A flag indicating whether the patient died, coded: 0 = survived, 1 = died.
+- Category :- The risk category the patient falls into.
+
+### Checking the head and tail of the source file
+Quick check on top and tail source file to ensure data looks ok.
+
+```{r overview, echo=FALSE}
+# checking head and tail of source file
+head(sim)
+tail(sim)
+```
+
+### EDA with 'inspectdf' library
+- Overview of source file structure, type of features within dataset, unique variables etc.
+- (source file has been named 'sim')
+
+```{r eda_1, echo=FALSE}
+# Overview of the data - Type = 1
+ExpData(data=sim,type=1)
+# Structure of the data - Type = 2
+ExpData(data=sim,type=2)
+
+w <- inspect_na(sim)
+show_plot(w)
+
+x <- inspect_types(sim)
+show_plot(x)
+
+#y <- inspect_num(sim)
+#show_plot(y)
+
+z <- inspect_cat(sim)
+show_plot(z)
+```
+
+No variables have missing values.
+
+Two Categorical Variables :-
+- Category has 3 possible values (Low, Moderate and High). Low is the dominant value. 
+- Organisation has ten possible values with equal amounts in each value.
+
+### Alternative EDA, using my own function, eda_v2
+
+```{r eda_2, echo=FALSE}
+basic_eda_v2(sim)
+```
+
+### Checking Distributions of each variable, via Histogram Plots
+
+```{r dists_1, echo=FALSE}
+plot_hist_facet(sim, ncol=3)
+print("Death Column - Split between 0 (survived), 1 (Not Survived)")
+table(sim$Death)
+```
+
+### Summary of Distributions
+- Organisation :- Equally distributed between the ten trusts.
+- Age :- Shows more records for younger (< 25) and older (> 60) people
+- LOS :- Most length of stays are less than 5 days, longer stays gradually reduce in numbers
+- Death :- more records in dataset with value = 0, ie. Survived.
+- Category :- Risk Category 2 is the most prevalent in this dataset
+
+```{r setup_data1, message=FALSE, warning=FALSE, echo = FALSE, results='hide'}
+# convert Death to a factor 
+sim$Death <- factor(sim$Death, levels = c(0, 1))
+# convert categorical / factor variables to numeric
+sim$Organisation <- as.numeric(sim$Organisation)
+sim$Category <- as.numeric(sim$Category)
+glimpse(sim)
+
+# Create the Training/Test Data sets, using CARET
+library(caret)
+'%ni%' <- Negate('%in%')  # define 'not in' func
+options(scipen=999)  # prevents printing scientific notations.
+
+# Prep Training and Test data.
+set.seed(100)
+trainDataIndex <- createDataPartition(sim$Death, p=0.7, list = F)  # 70% training data
+training_set <- sim[trainDataIndex, ]
+test_set <- sim[-trainDataIndex, ]
+table(training_set$Death)
+
+# CLASS IMBALANCE - addressing the issue
+# there is approximately 4 times more non-death rows, than death (ie=1)
+# use the downsampling utility from caret to "downsample"
+# Down Sample
+set.seed(100)
+down_train <- downSample(x = training_set[, colnames(training_set) %ni% "Death"],
+                         y = training_set$Death, yname="Death")
+
+table(down_train$Death)
+
+# convert death column to numeric in test and train sets
+down_train$Death <- as.numeric(as.character(down_train$Death))
+test_set$Death <- as.numeric(as.character(test_set$Death))
+
+
+# remove the ID column from the training and test sets
+down_train <- down_train[-1]
+test_set <- test_set[-1]
+
+# Feature Scaling
+down_train[-5] = scale(down_train[-5])
+test_set[-4] = scale(test_set[-4])
+```
+
+## Correlation Plot of Variables
+- As we are looking at a binary classification problem, eg. does the patient survive or not, then we can utilise the Logistic Regression technique for the modelling phase. 
+- An assumption of Logistic Regression is that there is no major correlation between independant variables (multicollinearity)
+- Producing a correlation plot, to check for this assumption.
+
+```{r corrs, echo=FALSE}
+M <- cor(down_train)
+corrplot(M, type="upper")
+```
+
+- AGE has a positive minor correlation to both the LOS and Category variables.
+- Both LOS and AGE, also show a minor correlation to the response variable, DEATH.
+- These correlations are minor, and would not be considered to invalidate the assumption of no multicollinearity between the independant variables
+
+## Modelling Phase - using Logistic Regression
+The initial model will include ALL of the dependant variables, with the 'Death' variable, being the response variable we are trying to predict.
+
+To evaluate the model performance, the following will be used :- 
+
+- Confusion Matrix (accuracy, precision, specificity metrics)
+- ROC Curve / AUC Score
+
+```{r model_data1, echo = FALSE}
+# Fitting Logistic Regression to the Training set
+classifier = glm(formula = Death ~ .,
+                 family = binomial(link = 'logit'),
+                 data = down_train)
+summary(classifier)
+anova(classifier, test="Chisq")
+```
+
+### Explanation of Model 1 Output
+- Organisation and Category variables, are NOT statistically significant (P > 0.05). Will therefore look to remove these from the model.
+
+- LOS variable, is on borderline of being statistically significant, so will keep in the model.
+
+The trained model is used to predict on the Test Dataset.
+
+### Model 1 Confusion Matrix
+
+Following shows the Confusion Matrix for the initial model, together with the accuracy, precision and specificty metrics
+
+```{r model1_auc, echo=FALSE}
+predictTest = predict(classifier, type = "response", newdata = test_set)
+# Confusion matrix for Test Set
+cm <- table(test_set$Death,predictTest >= 0.5)
+print("Confusion Matrix")
+cm
+accuracy <- (cm[1,1]+cm[2,2])/nrow(test_set)
+print(paste0("Accuracy of Model = ", round(accuracy,2)))
+# Precision = TP / (TP+FP)
+precision <- (cm[2,2] / (cm[1,2]+cm[2,2]))
+print("Precision - When it predicts Survival, how often is it correct ?")
+print(paste0("Precision = ", round(precision,2)))
+# Specificity = TN / (TN + FP)
+print("Specificity - When patient does NOT survive, how often does it predict this ?")
+spec <- (cm[1,1] / (cm[1,1] + cm[1,2]))
+print(paste0("Specificity = ", round(spec,2)))
+```
+
+### ROC / AUC analysis of Model 1
+
+```{r roc_1, }
+library(ROCR)
+ROCRpred = prediction(predictTest, test_set$Death)
+# Performance function
+ROCRperf = performance(ROCRpred, "tpr", "fpr")
+# Plot ROC curve
+plot(ROCRperf)
+# Add colors
+plot(ROCRperf, colorize=TRUE)
+# Add threshold labels 
+plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7)) 
+auc_1 <- auc(test_set$Death,predictTest)
+print(paste0("AUC Score for Model 2 = ", auc_1))
+```
+
+Add in explanation of ROC .....
+
+Will now re-create the model, without Organisation and Category variables
+
+### Model 2 - (AGE + LOS only)
+
+```{r model_2, echo=FALSE}
+# Fitting Logistic Regression to the Training set
+classifier2 = glm(formula = Death ~ Age + LOS,
+                 family = binomial(link = 'logit'),
+                 data = down_train)
+summary(classifier2)
+#now compare the 2 models
+anova(classifier,classifier2, test = 'Chisq')
+# confirms the second model is the best
+```
+
+### Explanation of Model 2 Output
+
+- Achieved a lower AIC score in second model compared to first
+
+- Comparing both models using the ANOVA test. 
+
+- null hypothesis = second model is better than first. 
+
+- p < 0.05 results in rejecting our hypothesis, if p > 0.05, we'll fail to reject the null hypothesis.
+
+- P Value from Anova Test = 0.98, so we fail to reject null hypothesis, which confirms the 2nd model is better than the first.
+
+### Model 2 Confusion Matrix
+
+```{r predict2, echo=FALSE}
+# Testing out model on TEST SET - unseen data     
+# ===================================================================================
+predictTest2 = predict(classifier2, type = "response", newdata = test_set)
+# Confusion matrix for Test Set
+cm <- table(test_set$Death,predictTest2 >= 0.5)
+print("Confusion Matrix")
+cm
+accuracy2 <- (cm[1,1]+cm[2,2])/nrow(test_set)
+print(paste0("Accuracy of Model = ", round(accuracy2,2)))
+# Precision = TP / (TP + FP)
+precision2 <- (cm[2,2] / (cm[1,2]+cm[2,2]))
+print("Precision - When it predicts Survival, how often is it correct ?")
+print(paste0("Precision = ", round(precision2,2)))
+# Specificity = TN / (TN + FP)
+print("Specificity - When patient does NOT survive, how often does it predict this ?")
+spec2 <- (cm[1,1] / (cm[1,1] + cm[1,2]))
+print(paste0("Specificity = ", round(spec2,2)))
+```
+
+### ROC / AUC analysis of Model 2
+
+```{r roc_2, echo=FALSE}
+# ROC analysis
+ROCRpred = prediction(predictTest2, test_set$Death)
+# Performance function
+ROCRperf = performance(ROCRpred, "tpr", "fpr")
+# Plot ROC curve
+plot(ROCRperf)
+# Add colors
+plot(ROCRperf, colorize=TRUE)
+# Add threshold labels 
+plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7)) 
+auc_2 <- auc(test_set$Death,predictTest2)
+print(paste0("AUC Score for Model 2 = ", auc_2))
+# ===================================================================================
+```
+
+Add in explanation of ROC .....
+

@@ -179,7 +179,7 @@ table(sim$Death)
 - Organisation :- Equally distributed between the ten trusts.
 - Age :- Shows more records for younger (< 25) and older (> 60) people
 - LOS :- Most length of stays are less than 5 days, longer stays gradually reduce in numbers
-- Death :- more records in dataset with value = 0, ie. Survived.
+- Death :- more records in dataset with value = 0, ie. Survived. This will result in an imbalanced dataset. When modelling this may result in poor performance on minority class. Will use Caret library, to upsample.
 - Category :- Risk Category 2 is the most prevalent in this dataset
 
 ```{r setup_data1, message=FALSE, warning=FALSE, echo = FALSE, results='hide'}
@@ -207,22 +207,22 @@ table(training_set$Death)
 # use the downsampling utility from caret to "downsample"
 # Down Sample
 set.seed(100)
-down_train <- downSample(x = training_set[, colnames(training_set) %ni% "Death"],
+up_train <- upSample(x = training_set[, colnames(training_set) %ni% "Death"],
                          y = training_set$Death, yname="Death")
 
-table(down_train$Death)
+table(up_train$Death)
 
 # convert death column to numeric in test and train sets
-down_train$Death <- as.numeric(as.character(down_train$Death))
+up_train$Death <- as.numeric(as.character(up_train$Death))
 test_set$Death <- as.numeric(as.character(test_set$Death))
 
 
 # remove the ID column from the training and test sets
-down_train <- down_train[-1]
+up_train <- up_train[-1]
 test_set <- test_set[-1]
 
 # Feature Scaling
-down_train[-5] = scale(down_train[-5])
+up_train[-5] = scale(up_train[-5])
 test_set[-4] = scale(test_set[-4])
 ```
 
@@ -232,13 +232,15 @@ test_set[-4] = scale(test_set[-4])
 - Producing a correlation plot, to check for this assumption.
 
 ```{r corrs, echo=FALSE}
-M <- cor(down_train)
+M <- cor(up_train)
 corrplot(M, type="upper")
 ```
 
-- AGE has a positive minor correlation to both the LOS and Category variables.
-- Both LOS and AGE, also show a minor correlation to the response variable, DEATH.
+- AGE has a minor positive correlation to the LOS variable. It also has a minor negative correlation with Category.
+
 - These correlations are minor, and would not be considered to invalidate the assumption of no multicollinearity between the independant variables
+
+- Both LOS and AGE, are also showing a minor correlation to the response variable, DEATH. This may indicate that these are important variables for the model.
 
 ## Modelling Phase - using Logistic Regression
 The initial model will include ALL of the dependant variables, with the 'Death' variable, being the response variable we are trying to predict.
@@ -252,17 +254,27 @@ To evaluate the model performance, the following will be used :-
 # Fitting Logistic Regression to the Training set
 classifier = glm(formula = Death ~ .,
                  family = binomial(link = 'logit'),
-                 data = down_train)
+                 data = up_train)
 summary(classifier)
 anova(classifier, test="Chisq")
 ```
 
-### Explanation of Model 1 Output
-- Organisation and Category variables, are NOT statistically significant (P > 0.05). Will therefore look to remove these from the model.
+### Model Output notes
+- The Estimate in the summary output table provided by R, represents the regression coefficients value. These regression coefficients help to explain the change in log(odds) of the response variable for one unit change in the predictor variable. A positive coefficient therefore suggests that with all other variables being equal the patient has more chance of survival. Oppositely for a negative coefficient, this will imply less chance of survival.
 
-- LOS variable, is on borderline of being statistically significant, so will keep in the model.
+- Std. Error represents the standard error associated with the regression coefficients.
 
-The trained model is used to predict on the Test Dataset.
+- The 'p' value shows the significance of predictor variables. For a 95% confidence level, a variable having p < 0.05 is considered an important predictor. R will apply stars to the side of any variables it considers significant.
+
+Key findings :-
+
+- Organisation and Category variables, are NOT statistically significant (P > 0.05).
+
+- AGE and LOS variables, both statistically significant (p < 0.05).
+
+Based on the above findings, the Organisation and Category variables will be removed, and a new model will then be trained with the just the AGE and LOS variables included (Stepwise regression technique)
+
+So we have a comparison, this initial trained model is now used to predict on the Test Dataset, and the metrics from the confusion matrix and ROC curve analysis will be produced.
 
 ### Model 1 Confusion Matrix
 
@@ -284,6 +296,10 @@ print(paste0("Precision = ", round(precision,2)))
 print("Specificity - When patient does NOT survive, how often does it predict this ?")
 spec <- (cm[1,1] / (cm[1,1] + cm[1,2]))
 print(paste0("Specificity = ", round(spec,2)))
+# Recall/Sensitivity = TP / (TP+FN)
+print("Recall / Sensitivity - When patient actually survives, how often does it predict this ?")
+recall <- (cm[2,2] / (cm[2,2] + cm[2,1]))
+print(paste0("Specificity = ", round(recall,2)))
 ```
 
 ### ROC / AUC analysis of Model 1
@@ -298,12 +314,14 @@ plot(ROCRperf)
 # Add colors
 plot(ROCRperf, colorize=TRUE)
 # Add threshold labels 
-plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7)) 
+# plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7)) 
 auc_1 <- auc(test_set$Death,predictTest)
 print(paste0("AUC Score for Model 2 = ", auc_1))
 ```
 
-Add in explanation of ROC .....
+A ROC Curve helps determine the accuracy of a Classification model.
+
+A perfect model for a ROC Curve, would have the plot hugging the top left corner of the plot. The nearer the curve is to this, the better the model. Also the higher the AUC value (Area under the curve) the better the model (a perfect model would be equal to 1). A random model would have an AUC value of 0.5 and the curve would be a diagonal splitting the plot into two.
 
 Will now re-create the model, without Organisation and Category variables
 
@@ -313,7 +331,7 @@ Will now re-create the model, without Organisation and Category variables
 # Fitting Logistic Regression to the Training set
 classifier2 = glm(formula = Death ~ Age + LOS,
                  family = binomial(link = 'logit'),
-                 data = down_train)
+                 data = up_train)
 summary(classifier2)
 #now compare the 2 models
 anova(classifier,classifier2, test = 'Chisq')
@@ -330,7 +348,7 @@ anova(classifier,classifier2, test = 'Chisq')
 
 - p < 0.05 results in rejecting our hypothesis, if p > 0.05, we'll fail to reject the null hypothesis.
 
-- P Value from Anova Test = 0.98, so we fail to reject null hypothesis, which confirms the 2nd model is better than the first.
+- P Value from Anova Test = 0.4067, so we fail to reject null hypothesis, which confirms the 2nd model is better than the first.
 
 ### Model 2 Confusion Matrix
 
@@ -352,7 +370,13 @@ print(paste0("Precision = ", round(precision2,2)))
 print("Specificity - When patient does NOT survive, how often does it predict this ?")
 spec2 <- (cm[1,1] / (cm[1,1] + cm[1,2]))
 print(paste0("Specificity = ", round(spec2,2)))
+# Recall/Sensitivity = TP / (TP+FN)
+print("Recall / Sensitivity - When patient actually survives, how often does it predict this ?")
+recall <- (cm[2,2] / (cm[2,2] + cm[2,1]))
+print(paste0("Recall = ", round(recall,2)))
 ```
+
+- The accuracy has improved from 0.54 to 0.57 for this second model.
 
 ### ROC / AUC analysis of Model 2
 
@@ -366,11 +390,11 @@ plot(ROCRperf)
 # Add colors
 plot(ROCRperf, colorize=TRUE)
 # Add threshold labels 
-plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7)) 
+# plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7)) 
 auc_2 <- auc(test_set$Death,predictTest2)
 print(paste0("AUC Score for Model 2 = ", auc_2))
 # ===================================================================================
 ```
 
-Add in explanation of ROC .....
+A perfect model for a ROC Curve, would have the plot hugging the top left of the plot. The nearer the curve is to this, the better the model. Also the higher the AUC value (Area under the curve) the better the model (a perfect model would be equal to 1)
 
